@@ -1,0 +1,233 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Urja Meter Ops API Wrapper",
+    "version": "1.0.0",
+    "description": "Clean REST API in front of the legacy Urja Meter Ops portal. See PROTOCOL.md for how the portal works."
+  },
+  "servers": [{ "url": "http://localhost:3000" }],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Service health check",
+        "responses": {
+          "200": {
+            "description": "Service is running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meters": {
+      "get": {
+        "summary": "List or search meters",
+        "description": "Currently passes through the portal's search response unchanged in `portalResponse`.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search text",
+            "schema": { "type": "string", "default": "" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number, starting at 1",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": { "type": "integer" },
+                    "query": { "type": "string" },
+                    "portalResponse": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "502": { "$ref": "#/components/responses/BadGateway" }
+        }
+      }
+    },
+    "/api/v1/meters/{id}": {
+      "get": {
+        "summary": "Get meter details and hierarchy",
+        "parameters": [{ "$ref": "#/components/parameters/MeterId" }],
+        "responses": {
+          "200": {
+            "description": "Meter details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Meter" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "502": { "$ref": "#/components/responses/BadGateway" }
+        }
+      }
+    },
+    "/api/v1/meters/{id}/geo": {
+      "get": {
+        "summary": "Get meter location",
+        "parameters": [{ "$ref": "#/components/parameters/MeterId" }],
+        "responses": {
+          "200": {
+            "description": "Meter location",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Geo" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "502": { "$ref": "#/components/responses/BadGateway" }
+        }
+      }
+    },
+    "/api/v1/meters/{id}/energy": {
+      "get": {
+        "summary": "Get meter energy consumption",
+        "description": "Currently passes through the portal's response unchanged in `portalResponse`. Any query parameters are forwarded to the portal as-is.",
+        "parameters": [{ "$ref": "#/components/parameters/MeterId" }],
+        "responses": {
+          "200": {
+            "description": "Energy data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "meterId": { "type": "string" },
+                    "portalResponse": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "502": { "$ref": "#/components/responses/BadGateway" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "MeterId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Meter id, letters, digits, '-' and '_' only",
+        "schema": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "example": "J100000"
+        }
+      }
+    },
+    "schemas": {
+      "Meter": {
+        "type": "object",
+        "properties": {
+          "meterId": { "type": "string", "example": "J100000" },
+          "serialNo": { "type": "string", "example": "SE33962" },
+          "make": { "type": "string", "example": "HPL" },
+          "phaseType": { "type": "string", "example": "single" },
+          "installationStatus": {
+            "type": "string",
+            "example": "Decommissioned"
+          },
+          "installationType": { "type": "string", "example": "Whole Current" },
+          "hierarchy": {
+            "type": "object",
+            "properties": {
+              "zone": { "type": "string", "example": "Jaipur Zone 1 (Z-01)" },
+              "circle": { "type": "string", "example": "Circle 1 (C-01)" },
+              "division": { "type": "string", "example": "Division 1 (D-01)" },
+              "subdivision": {
+                "type": "string",
+                "example": "Subdivision 1 (SD-01)"
+              },
+              "substation": {
+                "type": "string",
+                "example": "Substation 1 (SS-01)"
+              },
+              "feeder": { "type": "string", "example": "Feeder 1 (F-001)" },
+              "dt": {
+                "type": "string",
+                "example": "Malviya Nagar DT 1 (DT-001)"
+              }
+            }
+          }
+        }
+      },
+      "Geo": {
+        "type": "object",
+        "properties": {
+          "meterId": { "type": "string", "example": "J100000" },
+          "latitude": { "type": "number", "example": 26.938961002479868 },
+          "longitude": { "type": "number", "example": 75.83095696146852 }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid input (for example a malformed meter id or page number)",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Meter not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      },
+      "BadGateway": {
+        "description": "The legacy portal is unreachable",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      }
+    }
+  }
+}
